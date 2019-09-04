@@ -4,7 +4,12 @@ import './App.css';
 import Board from './Board';
 import Dice from './Dice';
 
-import { calculateLegalMoves } from './util';
+import {
+  calculateLegalMoves,
+  calculateBoardOutcomes,
+  scoreBoard,
+
+} from './util';
 
 const initBoard = [
   2, 0, 0, 0, 0, -5,
@@ -22,12 +27,16 @@ class App extends React.Component {
     blackHome: 0,
     blackJail: 0,
 
+    cp: 'white',
     turn: 'black',
     dice: [],
     selectedChip: null,
   }
 
   spaceClicked = (index)=> {
+
+    if(this.state.turn === this.state.cp ) return;
+
     const direction = this.state.turn === 'black' ? 1 : -1;
 
     // if no dice, do nothing (wait for roll)
@@ -78,6 +87,9 @@ class App extends React.Component {
   }
 
   spaceDoubleClicked = (index)=> {
+
+    // if(this.state.turn === this.state.cp ) return;
+
     //// if it's a doubleClick & chip can go home, makeMove(go home)
 
     const legalHomeMoves = calculateLegalMoves(
@@ -86,15 +98,15 @@ class App extends React.Component {
     ).filter(move => (
       (move.moveTo === this.state.turn + 'Home') && (move.moveFrom === index)
     ) );
-    
+
     if( legalHomeMoves.length ){
 
       let usedDie = this.state.turn === 'black' ? 24 - index : index + 1;
 
       if( !~this.state.dice.indexOf(usedDie) )
         usedDie = this.state.dice.find(die => die > usedDie);
-      
-      
+
+
       this.setState({
         selectedChip: null,
         chips: this.state.chips.map((chip, i)=> (
@@ -102,7 +114,7 @@ class App extends React.Component {
         ) ? chip : (
           this.state.turn === 'white' ? chip + 1 : chip - 1
         )),
-        
+
         dice: [
           ...this.state.dice.slice( 0, this.state.dice.indexOf(usedDie) ),
           ...this.state.dice.slice( this.state.dice.indexOf(usedDie) + 1)
@@ -111,11 +123,11 @@ class App extends React.Component {
         [this.state.turn + 'Home']: this.state[ this.state.turn + 'Home' ] + 1,
 
       }, this.checkTurnOver);
-      
+
     }
   }
 
-  
+
   makeMove = (to)=> {
     const direction = this.state.turn === 'black' ? 1 : -1;
 
@@ -167,12 +179,14 @@ class App extends React.Component {
   roll = ()=> {
     if( this.state.dice.length ) return;
 
+    if(this.state.turn === this.state.cp ) return;
+
     this.setState({ dice: [ Math.random()*6 +1, Math.random()*6 +1 ].map(Math.floor) }, ()=>{
       if( this.state.dice[0] === this.state.dice[1] )
         this.setState({
           dice: [...this.state.dice, ...this.state.dice],
         }, this.checkTurnOver);
-      
+
       else this.checkTurnOver();
     })
   }
@@ -181,7 +195,7 @@ class App extends React.Component {
   checkTurnOver = ()=>{
     if( this.state.whiteHome === 15 ) console.log('white wins');
     if( this.state.blackHome === 15 ) console.log('black wins');
-    
+
     const legalMoves = calculateLegalMoves(
       this.state.chips, this.state.dice, this.state.turn,
       this.state.whiteJail, this.state.blackJail
@@ -190,8 +204,77 @@ class App extends React.Component {
     if( !legalMoves.length ) this.setState({
       turn: ({ black: 'white', white: 'black' })[this.state.turn],
       dice: [],
+    }, ()=> {
+      if(this.state.turn === this.state.cp ) this.cpRoll();
+    });
+
+    return legalMoves.length;
+  }
+
+  cpRoll = ()=> {
+    this.setState({ dice: [ Math.random()*6 +1, Math.random()*6 +1 ].map(Math.floor) }, ()=>{
+      if( this.state.dice[0] === this.state.dice[1] )
+        this.setState({
+          dice: [...this.state.dice, ...this.state.dice],
+      }, this.cpMove);
+      else this.cpMove();
     });
   }
+
+  cpMove = ()=> {
+
+    if(!this.checkTurnOver() ) return;
+
+    // we have Dice
+    // calculate all possible board outcomes
+    const options = calculateBoardOutcomes(
+      this.state.chips, this.state.dice, this.state.turn,
+       this.state.blackJail, this.state.whiteJail
+     );
+
+    //score the outcome boards
+    const scoredOptions = options.map(option=>({
+      moves: option.moves,
+      score: scoreBoard(option.board),
+    }));
+
+    // console.log(scoreOptions);
+
+
+    //select best move combo by score
+    let bestMoves;
+    if(this.state.cp === 'white')
+      bestMoves = scoredOptions.sort((a, b)=> a.score - b.score)[0].moves;
+
+     else
+       bestMoves = scoredOptions.sort((a, b)=> b.score - a.score)[0].moves;
+
+
+    // setTimeout in a loop to trigger the moves.
+
+    for(let i = 0; i < (bestMoves.length); i++){
+
+     setTimeout(()=> {
+
+      if( bestMoves[i].moveFrom === this.state.cp + 'Jail'){
+
+          this.makeMove( bestMoves[i].moveTo );
+
+        } else if( bestMoves[i].moveTo === this.state.cp + 'Home'){
+          this.spaceDoubleClicked( bestMoves[i].moveFrom );
+
+        } else{
+
+          this.setState({ selectedChip: bestMoves[i].moveFrom }, ()=> {
+            this.makeMove( bestMoves[i].moveTo );
+          });
+        }
+      }, 800 + 900*i);
+
+    }
+  }
+
+
 
   render() {
     return (
