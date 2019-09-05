@@ -1,5 +1,7 @@
 # sheshbesh fullstack build (react + nodejs)
 
+This app can be found at the Domain: https://sheshbesh-cp.herokuapp.com/
+
 It's 2020! (almost) We want to play sheshbesh against eachother anywhere in the world!
 
 Let's build a game with google login that let's us play against our friends family and colleagues 
