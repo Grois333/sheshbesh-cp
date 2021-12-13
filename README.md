@@ -1,5 +1,7 @@
 # sheshbesh fullstack build (react + nodejs)
 
+![alt text](https://raw.githubusercontent.com/Grois333/sheshbesh-cp/master/react-sheshbesh.png)
+
 This app can be found at the Domain: https://sheshbesh-cp.herokuapp.com/
 
 It's 2020! (almost) We want to play sheshbesh against eachother anywhere in the world!
